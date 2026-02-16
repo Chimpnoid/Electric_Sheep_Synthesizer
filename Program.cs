@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.Win32.SafeHandles;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.Intrinsics.X86;
@@ -12,7 +13,7 @@ namespace ElectricSheepSynth
     {
         // Generate the WAV standard file header. This includes all necessary preamble to 
         // be read as a WAV without the wav data.  
-        static byte[] generateWavHeader(short audioFormat,short nmbrChannels,int sampleRate,short bitsPerSample,int sampleNumber)
+        static byte[] GenerateWavHeader(short audioFormat,short nmbrChannels,int sampleRate,short bitsPerSample,int sampleNumber)
         {
 
             //this is how many bytes per sample need to be read. multiplied by number of channels
@@ -83,7 +84,7 @@ namespace ElectricSheepSynth
         }
 
         //generate sine waveform of programmable frequency and amplitude
-        static List<double> sineWaveGen(double freq, int sampleRate, int bitsPerSample, double amplitude, double offset)
+        static List<double> SineWaveGen(double freq, int sampleRate, int bitsPerSample, double amplitude, double dcOffset, double phaseOffset)
         {
 
             //creates a fixed length sample. This needs to be updated to create variable length waveforms.
@@ -100,7 +101,7 @@ namespace ElectricSheepSynth
             {
 
                 double t = (double)i / sampleRate; // k*dt
-                double sample = offset + amplitude * Math.Sin(2.0 * Math.PI * freq * t);
+                double sample = dcOffset + amplitude * Math.Sin(2.0 * Math.PI * freq * t + phaseOffset);
 
                 oscillator.Add(sample);
 
@@ -112,7 +113,7 @@ namespace ElectricSheepSynth
         }
 
         //Helper Function: multiplies 2 arrays element by element.
-        static List<double> multiplicationEW(List<double> a, List<double> b)
+        static List<double> MultiplicationEW(List<double> a, List<double> b)
         {
 
             //this is placeholder functionality and assumes the lists have the same number of samples
@@ -133,7 +134,7 @@ namespace ElectricSheepSynth
         }
 
         //Helper Function: adds 2 arrays element by element.
-        static List<double> additionEW(List<double> a, List<double> b)
+        static List<double> AdditionEW(List<double> a, List<double> b)
         {
 
             //this is placeholder functionality and assumes the lists have the same number of samples
@@ -155,7 +156,7 @@ namespace ElectricSheepSynth
 
         //helper function: converts a list of samples to a byte array for use in PCM 
         //encoded wav files
-        static byte[] convertToByte(List<double> samples, short bitsPerSample)
+        static byte[] ConvertToByte(List<double> samples, short bitsPerSample)
         {
             var ms = new MemoryStream();
             var bw = new BinaryWriter(ms);
@@ -182,29 +183,69 @@ namespace ElectricSheepSynth
 
             return ms.ToArray();
 
-        } 
+        }
 
-        // generates sinewave oscillator. currently hardcoded to generate ring modulated sinewave. 
-        static byte[] createOscillatorLoop(float oscillatorFreq,int sampleRate,short bitsPerSample, short audioFormat)
+        //interleaves two byte arrays per sample to allow for 2 channel audio - possibly a way to make this generic to n channels,
+        //haven't thought of a solution yet
+        static byte[] TwoChInteleaving(byte[] leftChannel, byte[] rightChannel, short bitsPerSample)
+        {
+            var ms = new MemoryStream();
+            var bw = new BinaryWriter(ms);
+
+            //calculates how many bytes of data are held in a sample.
+            int bytesPerSample = (int)bitsPerSample / 8;
+
+            //loops through each sample - assumes length of channel data are identical currently. 
+            // samples are made up of bytesPerSample elements of the channel arrays
+            for(int i = 0; i < leftChannel.Length; i+=bytesPerSample)
+            {
+
+                //left channel - writes however many bytes make up a sample to the stream
+                for (int j = 0 ;j < bytesPerSample; j++)
+                {
+                    ms.WriteByte(leftChannel[i+j]); // j is indexing from the beginning of the current ample we are viewing
+                }
+
+                //right channel - follows by writing the second sample of bytes to the stream
+                for (int j = 0; j < bytesPerSample; j++)
+                {
+                    
+                    ms.WriteByte(rightChannel[i+j]);
+                }
+            }
+
+            return ms.ToArray();
+        }
+
+        // generates sinewave oscillator. currently hardcoded to play an A power chord with tremelo panning from left to write. 
+        static byte[] CreateOscillatorLoop(float oscillatorFreq,int sampleRate,short bitsPerSample, short audioFormat)
         {
             //memory stream allows for soundloop to be 
             var ms = new MemoryStream();
             var bw = new BinaryWriter(ms);
 
             //create message and envelope for ring mod
-            var sineDataA = sineWaveGen(440.0,sampleRate, bitsPerSample,0.33,0.0);
-            var sineDataC5 = sineWaveGen(554.37, sampleRate, bitsPerSample, 0.33, 0.0);
-            var sineDataE5 = sineWaveGen(659.26,sampleRate,bitsPerSample, 0.33, 0.0);
+            var sineDataA4 = SineWaveGen(440,sampleRate, bitsPerSample,0.1,0.0,0.0);
+            var sineDataE5 = SineWaveGen(660,sampleRate, bitsPerSample,0.1,0.0,0.0);
 
-            var sineData = additionEW(sineDataA,sineDataC5);
-            sineData = additionEW(sineData,sineDataE5);
+            var sineDataAPowerChord = AdditionEW(sineDataA4, sineDataE5);
 
-            var envelopeData = sineWaveGen(15, sampleRate, bitsPerSample,0.25,0.0);
+            var tremeloEnvelope = SineWaveGen(25, sampleRate, bitsPerSample, 0.5, 0.5, 0.0);
 
-            var oscillatorData = convertToByte(sineData,bitsPerSample);
+            //ringmod
+            var messageData = MultiplicationEW(sineDataAPowerChord, tremeloEnvelope);
+
+            //generates panning envelopes to ensure constant power panning.
+            var envelopeLeft = SineWaveGen(1,sampleRate,bitsPerSample,0.5,0.5,0.0);
+            var envelopeRight = SineWaveGen(1, sampleRate, bitsPerSample, 0.5, 0.5, Math.PI/2);
+
+            var leftChannel  = MultiplicationEW(messageData , envelopeLeft);
+            var rightChannel = MultiplicationEW(messageData , envelopeRight);
+
+            var oscillatorData = TwoChInteleaving(ConvertToByte(leftChannel,bitsPerSample),ConvertToByte(rightChannel,bitsPerSample),bitsPerSample);
 
             //generate wav data based on the generated waveform. currently has fixed length.
-            var headerData = generateWavHeader(audioFormat,(short)1,sampleRate,bitsPerSample, (int)(sampleRate / 1.0f));
+            var headerData = GenerateWavHeader(audioFormat,(short)2,sampleRate,bitsPerSample, (int)(sampleRate / 1.0f));
 
             bw.Write(headerData);
             bw.Write(oscillatorData);
@@ -218,7 +259,7 @@ namespace ElectricSheepSynth
         {
             
             //memory stream stores WAV file in ram.
-            var ms = new MemoryStream(createOscillatorLoop(150f,44100,(short)32,(short)1));
+            var ms = new MemoryStream(CreateOscillatorLoop(150f,44100,(short)32,(short)1));
             var sound = new System.Media.SoundPlayer();
             sound.Stream = ms;
 
