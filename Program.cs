@@ -15,9 +15,14 @@ namespace ElectricSheepSynth
         static byte[] generateWavHeader(short audioFormat,short nmbrChannels,int sampleRate,short bitsPerSample,int sampleNumber)
         {
 
-            
+            //this is how many bytes per sample need to be read. multiplied by number of channels
+            //as wav interleaves sample data. 
             short bytePerBloc = (short)(nmbrChannels * bitsPerSample / 8);
+            
+            //calculates how big the sample data in the wave file is
             int dataSize = sampleNumber*bytePerBloc;
+
+            //how many bytes are streamed to the speakers per second.
             int bytePerSec = bytePerBloc * sampleRate;
 
             var ms = new MemoryStream();
@@ -77,56 +82,24 @@ namespace ElectricSheepSynth
             return ms.ToArray();
         }
 
-        //static byte[] sineWaveData(float freq,int sampleRate,int bitsPerSample,double amplitude,double offset)
-        //{
-        //    int samplePerWave= (int)(sampleRate/1.0f);
-
-        //    var ms = new MemoryStream();
-        //    var bw = new BinaryWriter(ms);
-
-        //    for(int i = 0; i < samplePerWave; i++)
-        //    {
-
-        //        double t = (double)i / sampleRate;
-
-        //        double sample = offset + amplitude * Math.Sin(2.0 * Math.PI * freq * t);
-
-        //        switch (bitsPerSample)
-        //        {
-        //            case 8:
-        //                // 8-bit WAV is unsigned, 0-255, silence at 128
-        //                bw.Write((byte)(sample * 127 + 128));
-        //                break;
-        //            case 16:
-        //                // 16-bit WAV is signed
-        //                bw.Write((short)(sample * 32767));
-        //                break;
-        //            case 32:
-        //                // 32-bit WAV PCM is signed int
-        //                bw.Write((int)(sample * 2147483647));
-        //                break;
-        //        }
-
-        //    }
-
-        //    bw.Flush();
-        //    return ms.ToArray();
-
-        //}
-
+        //generate sine waveform of programmable frequency and amplitude
         static List<double> sineWaveGen(double freq, int sampleRate, int bitsPerSample, double amplitude, double offset)
         {
 
-            int samplePerWave = (int)(sampleRate / 1.0f);
+            //creates a fixed length sample. This needs to be updated to create variable length waveforms.
+            int fixedLengthPeriod = (int)(sampleRate / 1.0f);
 
 
             List<double> oscillator = new List<double>();
 
-            for (int i = 0; i < samplePerWave; i++)
+
+
+            //generate sample by sample sine wave. essentially computes y[k] = sin(k*2*pi*dt)
+            //where dt is the sampleTime and k is the currentSample 
+            for (int i = 0; i < fixedLengthPeriod; i++)
             {
 
-                double t = (double)i / sampleRate;
-
+                double t = (double)i / sampleRate; // k*dt
                 double sample = offset + amplitude * Math.Sin(2.0 * Math.PI * freq * t);
 
                 oscillator.Add(sample);
@@ -138,8 +111,14 @@ namespace ElectricSheepSynth
 
         }
 
-        static List<double> elementWiseMultiplication(List<double> a, List<double> b)
+        //Helper Function: multiplies 2 arrays element by element.
+        static List<double> multiplicationEW(List<double> a, List<double> b)
         {
+
+            //this is placeholder functionality and assumes the lists have the same number of samples
+            //since these are cyclical waveforms I need to figure out a way to make it so that each can have variable length
+            //and we loop back to the beginning if we reach the end before another. ( maybe find lowest common multiple).
+
             List<double> c = new List<double>();
 
             int longestLength = Math.Max(a.Count, b.Count);
@@ -153,11 +132,35 @@ namespace ElectricSheepSynth
             return c;
         }
 
+        //Helper Function: adds 2 arrays element by element.
+        static List<double> additionEW(List<double> a, List<double> b)
+        {
+
+            //this is placeholder functionality and assumes the lists have the same number of samples
+            //since these are cyclical waveforms I need to figure out a way to make it so that each can have variable length
+            //and we loop back to the beginning if we reach the end before another. ( maybe find lowest common multiple).
+
+            List<double> c = new List<double>();
+
+            int longestLength = Math.Max(a.Count, b.Count);
+
+            for (int i = 0; i < longestLength; i++)
+            {
+                c.Add(a[i] + b[i]);
+            }
+
+
+            return c;
+        }
+
+        //helper function: converts a list of samples to a byte array for use in PCM 
+        //encoded wav files
         static byte[] convertToByte(List<double> samples, short bitsPerSample)
         {
             var ms = new MemoryStream();
             var bw = new BinaryWriter(ms);
 
+            //convert from the sample 
             foreach(var sample in samples)
             {
                 switch (bitsPerSample)
@@ -181,36 +184,26 @@ namespace ElectricSheepSynth
 
         } 
 
-
-
-        //static byte[] MultiplyAudio16(byte[] a, byte[] b)
-        //{
-        //    int numSamples = a.Length / 2;
-        //    var ms = new MemoryStream();
-        //    var bw = new BinaryWriter(ms);
-
-        //    for (int i = 0; i < numSamples; i++)
-        //    {
-        //        short sA = BitConverter.ToInt16(a, i * 2);
-        //        short sB = BitConverter.ToInt16(b, i * 2);
-        //        // Normalize to -1..1, multiply, scale back
-        //        double result = (sA / 32767.0) * (sB / 32767.0);
-        //        bw.Write((short)(result * 32767));
-        //    }
-
-        //    bw.Flush();
-        //    return ms.ToArray();
-        //}
-
+        // generates sinewave oscillator. currently hardcoded to generate ring modulated sinewave. 
         static byte[] createOscillatorLoop(float oscillatorFreq,int sampleRate,short bitsPerSample, short audioFormat)
         {
+            //memory stream allows for soundloop to be 
             var ms = new MemoryStream();
             var bw = new BinaryWriter(ms);
 
-            var sineData = sineWaveGen(oscillatorFreq,sampleRate, bitsPerSample,2.0,0.0);
-            var envelopeData = sineWaveGen(10, sampleRate, bitsPerSample,0.5,0.5);
-            var oscillatorData = convertToByte(elementWiseMultiplication(sineData, envelopeData),bitsPerSample);
+            //create message and envelope for ring mod
+            var sineDataA = sineWaveGen(440.0,sampleRate, bitsPerSample,0.33,0.0);
+            var sineDataC5 = sineWaveGen(554.37, sampleRate, bitsPerSample, 0.33, 0.0);
+            var sineDataE5 = sineWaveGen(659.26,sampleRate,bitsPerSample, 0.33, 0.0);
 
+            var sineData = additionEW(sineDataA,sineDataC5);
+            sineData = additionEW(sineData,sineDataE5);
+
+            var envelopeData = sineWaveGen(15, sampleRate, bitsPerSample,0.25,0.0);
+
+            var oscillatorData = convertToByte(sineData,bitsPerSample);
+
+            //generate wav data based on the generated waveform. currently has fixed length.
             var headerData = generateWavHeader(audioFormat,(short)1,sampleRate,bitsPerSample, (int)(sampleRate / 1.0f));
 
             bw.Write(headerData);
@@ -224,12 +217,13 @@ namespace ElectricSheepSynth
         static void Main(string[] args)
         {
             
-            var ms = new MemoryStream(createOscillatorLoop(880f,44100,(short)32,(short)1));
+            //memory stream stores WAV file in ram.
+            var ms = new MemoryStream(createOscillatorLoop(150f,44100,(short)32,(short)1));
             var sound = new System.Media.SoundPlayer();
             sound.Stream = ms;
 
+            //loops wav file in memory stream until user input 
             sound.PlayLooping();
-
             Console.ReadLine();
         }
     }
