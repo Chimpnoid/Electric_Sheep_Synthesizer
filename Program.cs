@@ -148,11 +148,11 @@ namespace ElectricSheepSynth
 
             List<double> c = new List<double>();
 
-            int longestLength = Math.Max(a.Count, b.Count);
+            int longestLength = LCM(a.Count, b.Count);
 
-            for(int i = 0; i < longestLength; i++)
+            for (int i = 0; i < longestLength; i++)
             {
-                c.Add(a[i] * b[i]);
+                c.Add(a[i % a.Count] * b[i % b.Count]);
             }
 
 
@@ -169,11 +169,11 @@ namespace ElectricSheepSynth
 
             List<double> c = new List<double>();
 
-            int longestLength = Math.Max(a.Count, b.Count);
+            int longestLength = LCM(a.Count, b.Count);
 
             for (int i = 0; i < longestLength; i++)
             {
-                c.Add(a[i] + b[i]);
+                c.Add(a[i % a.Count] + b[i % b.Count]);
             }
 
 
@@ -223,20 +223,20 @@ namespace ElectricSheepSynth
 
             //loops through each sample - assumes length of channel data are identical currently. 
             // samples are made up of bytesPerSample elements of the channel arrays
-            for(int i = 0; i < leftChannel.Length; i+=bytesPerSample)
+            for(int i = 0; i < LCM(leftChannel.Length,rightChannel.Length)/bytesPerSample; i+=bytesPerSample)
             {
 
                 //left channel - writes however many bytes make up a sample to the stream
                 for (int j = 0 ;j < bytesPerSample; j++)
                 {
-                    ms.WriteByte(leftChannel[i+j]); // j is indexing from the beginning of the current ample we are viewing
+                    ms.WriteByte(leftChannel[(i+j)%(leftChannel.Length/bytesPerSample)]); // j is indexing from the beginning of the current ample we are viewing
                 }
 
                 //right channel - follows by writing the second sample of bytes to the stream
                 for (int j = 0; j < bytesPerSample; j++)
                 {
                     
-                    ms.WriteByte(rightChannel[i+j]);
+                    ms.WriteByte(rightChannel[(i + j) % (rightChannel.Length/bytesPerSample)]);
                 }
             }
 
@@ -253,26 +253,25 @@ namespace ElectricSheepSynth
 
             //create message and envelope for ring mod
             var sineDataC4 = SineWaveGen(261.63, sampleRate, bitsPerSample, 0.1, 0.0, 0.0);
-            //var sineDataE5 = SineWaveGen(659.6, sampleRate, bitsPerSample, 0.1, 0.0, 0.0);
+            var sineDataE4 = SineWaveGen(329.63, sampleRate, bitsPerSample, 0.1, 0.0, 0.0);
+            var sineDataG4 = SineWaveGen(392.00, sampleRate, bitsPerSample, 0.1, 0.0, 0.0);
 
-            //var sineDataAPowerChord = AdditionEW(sineDataA4, sineDataE5);
 
-            //var tremeloEnvelope = SineWaveGen(45, sampleRate, bitsPerSample, 0.5, 0.5, 0.0);
+            var tremeloEnvelope = SineWaveGen(7.0, sampleRate, bitsPerSample, 0.5, 0.5, 0.0);
 
-            //ringmod
-            //var messageData = MultiplicationEW(sineDataAPowerChord, tremeloEnvelope);
+            var messageData = MultiplicationEW(AdditionEW(AdditionEW(sineDataC4, sineDataE4), sineDataG4),tremeloEnvelope);
 
-            //generates panning envelopes to ensure constant power panning.
-            //var envelopeLeft = SineWaveGen(1, sampleRate, bitsPerSample, 0.5, 0.5, 0.0);
-            //var envelopeRight = SineWaveGen(1, sampleRate, bitsPerSample, 0.5, 0.5, Math.PI / 2);
+            var leftEnvelope = SineWaveGen(0.1, sampleRate, bitsPerSample, 1.0, 0.0, 0.0);
+            var rightEnvelope = SineWaveGen(0.1,sampleRate, bitsPerSample, 1.0, 0.0, Math.PI/2);
 
-            var leftChannel = sineDataC4;
-            var rightChannel = sineDataC4;
+            var leftChannel = ConvertToByte(MultiplicationEW(messageData,leftEnvelope),bitsPerSample);
+            var rightChannel = ConvertToByte(MultiplicationEW(messageData, rightEnvelope), bitsPerSample);
 
-            var oscillatorData = TwoChInteleaving(ConvertToByte(leftChannel, bitsPerSample), ConvertToByte(rightChannel, bitsPerSample), bitsPerSample);
+            var oscillatorData = TwoChInteleaving(leftChannel,rightChannel,bitsPerSample);
+
 
             //generate wav data based on the generated waveform. currently has fixed length.
-            var headerData = GenerateWavHeader(audioFormat, (short)2, sampleRate, bitsPerSample, (int)(sampleRate / 1.0f));
+            var headerData = GenerateWavHeader(audioFormat, (short)2, sampleRate, bitsPerSample, oscillatorData.Length * 8 /bitsPerSample);
 
             bw.Write(headerData);
             bw.Write(oscillatorData);
