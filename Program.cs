@@ -88,7 +88,7 @@ namespace ElectricSheepSynth
         {
 
             //creates a fixed length sample. This needs to be updated to create variable length waveforms.
-            int fixedLengthPeriod = (int)(sampleRate / 1.0f);
+            int samplePeriod = (int)(sampleRate / freq);
 
 
             List<double> oscillator = new List<double>();
@@ -97,7 +97,7 @@ namespace ElectricSheepSynth
 
             //generate sample by sample sine wave. essentially computes y[k] = sin(k*2*pi*dt)
             //where dt is the sampleTime and k is the currentSample 
-            for (int i = 0; i < fixedLengthPeriod; i++)
+            for (int i = 0; i < samplePeriod; i++)
             {
 
                 double t = (double)i / sampleRate; // k*dt
@@ -111,6 +111,32 @@ namespace ElectricSheepSynth
             return oscillator;
 
         }
+
+        //calculates greatest common divisor using euclids algorithm
+        static int GCD(int a, int b)
+        {
+            int big = Math.Abs(Math.Max(a, b));
+            int small = Math.Abs(Math.Min(a, b));
+
+            while (small != 0)
+            {
+                int rem = big % small; ;
+
+                if (rem == 0) return small;
+
+                big = small;
+                small = rem;
+            }
+            return -1;
+        }
+
+        //Helper function: calculate lowest common multiple of 2 integers
+        static int LCM(int a, int b)
+        {
+            return Math.Abs(a * b) / GCD(a, b);
+
+        }
+
 
         //Helper Function: multiplies 2 arrays element by element.
         static List<double> MultiplicationEW(List<double> a, List<double> b)
@@ -217,55 +243,58 @@ namespace ElectricSheepSynth
             return ms.ToArray();
         }
 
+
         // generates sinewave oscillator. currently hardcoded to play an A power chord with tremelo panning from left to write. 
-        static byte[] CreateOscillatorLoop(float oscillatorFreq,int sampleRate,short bitsPerSample, short audioFormat)
+        static byte[] GenerateOscillatorWav(float oscillatorFreq, int sampleRate, short bitsPerSample, short audioFormat)
         {
             //memory stream allows for soundloop to be 
             var ms = new MemoryStream();
             var bw = new BinaryWriter(ms);
 
             //create message and envelope for ring mod
-            var sineDataA4 = SineWaveGen(440,sampleRate, bitsPerSample,0.1,0.0,0.0);
-            var sineDataE5 = SineWaveGen(660,sampleRate, bitsPerSample,0.1,0.0,0.0);
+            var sineDataC4 = SineWaveGen(261.63, sampleRate, bitsPerSample, 0.1, 0.0, 0.0);
+            //var sineDataE5 = SineWaveGen(659.6, sampleRate, bitsPerSample, 0.1, 0.0, 0.0);
 
-            var sineDataAPowerChord = AdditionEW(sineDataA4, sineDataE5);
+            //var sineDataAPowerChord = AdditionEW(sineDataA4, sineDataE5);
 
-            var tremeloEnvelope = SineWaveGen(25, sampleRate, bitsPerSample, 0.5, 0.5, 0.0);
+            //var tremeloEnvelope = SineWaveGen(45, sampleRate, bitsPerSample, 0.5, 0.5, 0.0);
 
             //ringmod
-            var messageData = MultiplicationEW(sineDataAPowerChord, tremeloEnvelope);
+            //var messageData = MultiplicationEW(sineDataAPowerChord, tremeloEnvelope);
 
             //generates panning envelopes to ensure constant power panning.
-            var envelopeLeft = SineWaveGen(1,sampleRate,bitsPerSample,0.5,0.5,0.0);
-            var envelopeRight = SineWaveGen(1, sampleRate, bitsPerSample, 0.5, 0.5, Math.PI/2);
+            //var envelopeLeft = SineWaveGen(1, sampleRate, bitsPerSample, 0.5, 0.5, 0.0);
+            //var envelopeRight = SineWaveGen(1, sampleRate, bitsPerSample, 0.5, 0.5, Math.PI / 2);
 
-            var leftChannel  = MultiplicationEW(messageData , envelopeLeft);
-            var rightChannel = MultiplicationEW(messageData , envelopeRight);
+            var leftChannel = sineDataC4;
+            var rightChannel = sineDataC4;
 
-            var oscillatorData = TwoChInteleaving(ConvertToByte(leftChannel,bitsPerSample),ConvertToByte(rightChannel,bitsPerSample),bitsPerSample);
+            var oscillatorData = TwoChInteleaving(ConvertToByte(leftChannel, bitsPerSample), ConvertToByte(rightChannel, bitsPerSample), bitsPerSample);
 
             //generate wav data based on the generated waveform. currently has fixed length.
-            var headerData = GenerateWavHeader(audioFormat,(short)2,sampleRate,bitsPerSample, (int)(sampleRate / 1.0f));
+            var headerData = GenerateWavHeader(audioFormat, (short)2, sampleRate, bitsPerSample, (int)(sampleRate / 1.0f));
 
             bw.Write(headerData);
             bw.Write(oscillatorData);
 
-            bw.Flush(); 
+            bw.Flush();
 
-            return ms.ToArray(); 
+            return ms.ToArray();
         }
 
         static void Main(string[] args)
         {
-            
+
             //memory stream stores WAV file in ram.
-            var ms = new MemoryStream(CreateOscillatorLoop(150f,44100,(short)32,(short)1));
+            var ms = new MemoryStream(GenerateOscillatorWav(150f, 44100, (short)32, (short)1));
             var sound = new System.Media.SoundPlayer();
             sound.Stream = ms;
 
             //loops wav file in memory stream until user input 
             sound.PlayLooping();
             Console.ReadLine();
+
+
         }
     }
 }
