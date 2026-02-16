@@ -1,5 +1,7 @@
-﻿using System.IO;
+﻿using System.Diagnostics;
+using System.IO;
 using System.Reflection.Metadata.Ecma335;
+using System.Runtime.Intrinsics.X86;
 
 
 
@@ -42,7 +44,7 @@ namespace ElectricSheepSynth
             bw.Write(new byte[] { 0x66, 0x6D, 0x74, 0x20 }); // Identifier = fmt
 
             //block Size: 2 bytes
-            bw.Write((short) 16); // size of this block is always 16 bits
+            bw.Write((int) 16); // size of this block is always 16 bits
 
             //audio Format (1: PCM Integer or 3: IEEE 754 float): 2 bytes
             bw.Write(audioFormat); // defaulting to PCM Integer format
@@ -75,22 +77,146 @@ namespace ElectricSheepSynth
             return ms.ToArray();
         }
 
-        static byte[] sineWaveData(float freq,int sampleRate,int bitsPerSample)
+        //static byte[] sineWaveData(float freq,int sampleRate,int bitsPerSample,double amplitude,double offset)
+        //{
+        //    int samplePerWave= (int)(sampleRate/1.0f);
+
+        //    var ms = new MemoryStream();
+        //    var bw = new BinaryWriter(ms);
+
+        //    for(int i = 0; i < samplePerWave; i++)
+        //    {
+
+        //        double t = (double)i / sampleRate;
+
+        //        double sample = offset + amplitude * Math.Sin(2.0 * Math.PI * freq * t);
+
+        //        switch (bitsPerSample)
+        //        {
+        //            case 8:
+        //                // 8-bit WAV is unsigned, 0-255, silence at 128
+        //                bw.Write((byte)(sample * 127 + 128));
+        //                break;
+        //            case 16:
+        //                // 16-bit WAV is signed
+        //                bw.Write((short)(sample * 32767));
+        //                break;
+        //            case 32:
+        //                // 32-bit WAV PCM is signed int
+        //                bw.Write((int)(sample * 2147483647));
+        //                break;
+        //        }
+
+        //    }
+
+        //    bw.Flush();
+        //    return ms.ToArray();
+
+        //}
+
+        static List<double> sineWaveGen(double freq, int sampleRate, int bitsPerSample, double amplitude, double offset)
         {
 
+            int samplePerWave = (int)(sampleRate / 1.0f);
+
+
+            List<double> oscillator = new List<double>();
+
+            for (int i = 0; i < samplePerWave; i++)
+            {
+
+                double t = (double)i / sampleRate;
+
+                double sample = offset + amplitude * Math.Sin(2.0 * Math.PI * freq * t);
+
+                oscillator.Add(sample);
+
+            }
+
+
+            return oscillator;
+
         }
+
+        static List<double> elementWiseMultiplication(List<double> a, List<double> b)
+        {
+            List<double> c = new List<double>();
+
+            int longestLength = Math.Max(a.Count, b.Count);
+
+            for(int i = 0; i < longestLength; i++)
+            {
+                c.Add(a[i] * b[i]);
+            }
+
+
+            return c;
+        }
+
+        static byte[] convertToByte(List<double> samples, short bitsPerSample)
+        {
+            var ms = new MemoryStream();
+            var bw = new BinaryWriter(ms);
+
+            foreach(var sample in samples)
+            {
+                switch (bitsPerSample)
+                {
+                    case 8:
+                        // 8-bit WAV is unsigned, 0-255, silence at 128
+                        bw.Write((byte)(sample * 127 + 128));
+                        break;
+                    case 16:
+                        // 16-bit WAV is signed
+                        bw.Write((short)(sample * 32767));
+                        break;
+                    case 32:
+                        // 32-bit WAV PCM is signed int
+                        bw.Write((int)(sample * 2147483647));
+                        break;
+                }
+            }
+
+            return ms.ToArray();
+
+        } 
+
+
+
+        //static byte[] MultiplyAudio16(byte[] a, byte[] b)
+        //{
+        //    int numSamples = a.Length / 2;
+        //    var ms = new MemoryStream();
+        //    var bw = new BinaryWriter(ms);
+
+        //    for (int i = 0; i < numSamples; i++)
+        //    {
+        //        short sA = BitConverter.ToInt16(a, i * 2);
+        //        short sB = BitConverter.ToInt16(b, i * 2);
+        //        // Normalize to -1..1, multiply, scale back
+        //        double result = (sA / 32767.0) * (sB / 32767.0);
+        //        bw.Write((short)(result * 32767));
+        //    }
+
+        //    bw.Flush();
+        //    return ms.ToArray();
+        //}
+
         static byte[] createOscillatorLoop(float oscillatorFreq,int sampleRate,short bitsPerSample, short audioFormat)
         {
             var ms = new MemoryStream();
             var bw = new BinaryWriter(ms);
 
-            var sineData = sineWaveData(oscillatorFreq,sampleRate, bitsPerSample);
-            var headerData = generateWavHeader(audioFormat,(short)1,sampleRate,bitsPerSample,sineData.Length);
+            var sineData = sineWaveGen(oscillatorFreq,sampleRate, bitsPerSample,2.0,0.0);
+            var envelopeData = sineWaveGen(10, sampleRate, bitsPerSample,0.5,0.5);
+            var oscillatorData = convertToByte(elementWiseMultiplication(sineData, envelopeData),bitsPerSample);
+
+            var headerData = generateWavHeader(audioFormat,(short)1,sampleRate,bitsPerSample, (int)(sampleRate / 1.0f));
 
             bw.Write(headerData);
-            bw.Write(sineData);
+            bw.Write(oscillatorData);
 
-            bw.Flush();
+            bw.Flush(); 
 
             return ms.ToArray(); 
         }
@@ -98,7 +224,7 @@ namespace ElectricSheepSynth
         static void Main(string[] args)
         {
             
-            var ms = new MemoryStream(createOscillatorLoop(440f,44100,(short)8,(short)1));
+            var ms = new MemoryStream(createOscillatorLoop(880f,44100,(short)32,(short)1));
             var sound = new System.Media.SoundPlayer();
             sound.Stream = ms;
 
