@@ -12,8 +12,12 @@ for C# and digital signal processing.
 - Sinusoidal Oscillator with programmable frequency,phase offset, and DC offset.
 - Two channel audio interleaving.
 - Summing and multiplication of waveforms.
+- Creates astronomically large samples that flood the memory but they loop nicely 
+  so hey ho if they finally load.  
 
 #To Do: 
+- Change the way we loop( a phase accumulator rather than what I am doing)
+- transition to using IAudioClient interface rather than SoundPlayer.
 - Implement different types of oscillator (square wave, saw tooth, and triangle).
 - Move everything to classes.
 - ADSR filter.
