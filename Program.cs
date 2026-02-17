@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Reflection.Metadata.Ecma335;
+using System.Runtime;
 using System.Runtime.Intrinsics.X86;
 
 
@@ -133,7 +134,7 @@ namespace ElectricSheepSynth
         //Helper function: calculate lowest common multiple of 2 integers
         static int LCM(int a, int b)
         {
-            return Math.Abs(a * b) / GCD(a, b);
+            return (int)((long)Math.Abs(a) * Math.Abs(b) / GCD(a, b));
 
         }
 
@@ -180,6 +181,16 @@ namespace ElectricSheepSynth
             return c;
         }
 
+        static void WriteSample(BinaryWriter writer, double sample, int bitDepth)
+        {
+            switch (bitDepth)
+            {
+                case 8: writer.Write((byte)(sample * 127 + 128)); break;
+                case 16: writer.Write((short)(sample * 32767)); break;
+                case 32: writer.Write((int)(sample * 2147483647)); break;
+            }
+        }
+
         //helper function: converts a list of samples to a byte array for use in PCM 
         //encoded wav files
         static byte[] ConvertToByte(List<double> samples, short bitsPerSample)
@@ -188,23 +199,9 @@ namespace ElectricSheepSynth
             var bw = new BinaryWriter(ms);
 
             //convert from the sample 
-            foreach(var sample in samples)
+            foreach (var sample in samples)
             {
-                switch (bitsPerSample)
-                {
-                    case 8:
-                        // 8-bit WAV is unsigned, 0-255, silence at 128
-                        bw.Write((byte)(sample * 127 + 128));
-                        break;
-                    case 16:
-                        // 16-bit WAV is signed
-                        bw.Write((short)(sample * 32767));
-                        break;
-                    case 32:
-                        // 32-bit WAV PCM is signed int
-                        bw.Write((int)(sample * 2147483647));
-                        break;
-                }
+                WriteSample(bw, sample, bitsPerSample);
             }
 
             return ms.ToArray();
@@ -213,71 +210,55 @@ namespace ElectricSheepSynth
 
         //interleaves two byte arrays per sample to allow for 2 channel audio - possibly a way to make this generic to n channels,
         //haven't thought of a solution yet
-        static byte[] TwoChInteleaving(byte[] leftChannel, byte[] rightChannel, short bitsPerSample)
+        static byte[] TwoChInterleaving(List<double> leftChannel, List<double> rightChannel, short bitsPerSample)
         {
             var ms = new MemoryStream();
             var bw = new BinaryWriter(ms);
 
-            //calculates how many bytes of data are held in a sample.
-            int bytesPerSample = (int)bitsPerSample / 8;
-
-            //loops through each sample - assumes length of channel data are identical currently. 
-            // samples are made up of bytesPerSample elements of the channel arrays
-            for(int i = 0; i < LCM(leftChannel.Length,rightChannel.Length)/bytesPerSample; i+=bytesPerSample)
+            int bytesPerSample = bitsPerSample / 8;
+   
+            for (int i = 0; i < LCM(leftChannel.Count, rightChannel.Count); i++)
             {
-
-                //left channel - writes however many bytes make up a sample to the stream
-                for (int j = 0 ;j < bytesPerSample; j++)
-                {
-                    ms.WriteByte(leftChannel[(i+j)%(leftChannel.Length/bytesPerSample)]); // j is indexing from the beginning of the current ample we are viewing
-                }
-
-                //right channel - follows by writing the second sample of bytes to the stream
-                for (int j = 0; j < bytesPerSample; j++)
-                {
-                    
-                    ms.WriteByte(rightChannel[(i + j) % (rightChannel.Length/bytesPerSample)]);
-                }
+                WriteSample(bw, leftChannel[i % leftChannel.Count], bitsPerSample);
+                WriteSample(bw, rightChannel[i % rightChannel.Count], bitsPerSample);
             }
 
             return ms.ToArray();
         }
 
-
+       
         // generates sinewave oscillator. currently hardcoded to play an A power chord with tremelo panning from left to write. 
-        static byte[] GenerateOscillatorWav(float oscillatorFreq, int sampleRate, short bitsPerSample, short audioFormat)
+        static byte[] GenerateOscillatorWav(float oscillatorFreq, int sampleRate, short bitsPerSample, short audioFormat,short chNumber)
         {
             //memory stream allows for soundloop to be 
             var ms = new MemoryStream();
             var bw = new BinaryWriter(ms);
 
-            //create message and envelope for ring mod
-            var sineDataC4 = SineWaveGen(261.63, sampleRate, bitsPerSample, 0.1, 0.0, 0.0);
-            var sineDataE4 = SineWaveGen(329.63, sampleRate, bitsPerSample, 0.1, 0.0, 0.0);
-            var sineDataG4 = SineWaveGen(392.00, sampleRate, bitsPerSample, 0.1, 0.0, 0.0);
+            //create message 
+            var messageData = SineWaveGen(440, sampleRate, bitsPerSample, 0.5, 0.0, 0.0);
+
+            var tremeloEnvelope = SineWaveGen(6.5, sampleRate, bitsPerSample, 0.5, 0.5, 0.0);
 
 
-            var tremeloEnvelope = SineWaveGen(7.0, sampleRate, bitsPerSample, 0.5, 0.5, 0.0);
 
-            var messageData = MultiplicationEW(AdditionEW(AdditionEW(sineDataC4, sineDataE4), sineDataG4),tremeloEnvelope);
-
-            var leftEnvelope = SineWaveGen(0.1, sampleRate, bitsPerSample, 1.0, 0.0, 0.0);
-            var rightEnvelope = SineWaveGen(0.1,sampleRate, bitsPerSample, 1.0, 0.0, Math.PI/2);
-
-            var leftChannel = ConvertToByte(MultiplicationEW(messageData,leftEnvelope),bitsPerSample);
-            var rightChannel = ConvertToByte(MultiplicationEW(messageData, rightEnvelope), bitsPerSample);
-
-            var oscillatorData = TwoChInteleaving(leftChannel,rightChannel,bitsPerSample);
+            var leftEnvelope = SineWaveGen(0.1, sampleRate, bitsPerSample, 1.0, 0.0, 0);
+            var rightEnvelope = SineWaveGen(0.1, sampleRate, bitsPerSample, 1.0, 0.0, Math.PI / 2);
 
 
+            var left = MultiplicationEW(messageData, leftEnvelope);
+            var right = MultiplicationEW(messageData, rightEnvelope);
+
+            //var oscillatorData = ConvertToByte(sineDataA4, bitsPerSample);
+            var oscillatorData = TwoChInterleaving(left,right, bitsPerSample);
+
+            int bytesPerSample = (int)bitsPerSample / 8;
             //generate wav data based on the generated waveform. currently has fixed length.
-            var headerData = GenerateWavHeader(audioFormat, (short)2, sampleRate, bitsPerSample, oscillatorData.Length * 8 /bitsPerSample);
+            var headerData = GenerateWavHeader(audioFormat, chNumber, sampleRate, bitsPerSample,oscillatorData.Length/bytesPerSample/chNumber );
 
             bw.Write(headerData);
             bw.Write(oscillatorData);
 
             bw.Flush();
-
             return ms.ToArray();
         }
 
@@ -285,7 +266,7 @@ namespace ElectricSheepSynth
         {
 
             //memory stream stores WAV file in ram.
-            var ms = new MemoryStream(GenerateOscillatorWav(150f, 44100, (short)32, (short)1));
+            var ms = new MemoryStream(GenerateOscillatorWav(150f, 44100, (short)32, (short)1,(short)2));
             var sound = new System.Media.SoundPlayer();
             sound.Stream = ms;
 
