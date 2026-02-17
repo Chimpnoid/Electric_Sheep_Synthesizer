@@ -9,6 +9,7 @@
 	
   <ItemGroup>
 	 <PackageReference Include="System.Windows.Extensions" Version="4.7.0" />
+	  <Compile Remove="Legacy\**" />
   </ItemGroup>
 	
 	
