@@ -20,24 +20,24 @@ namespace ElectricSheepSynth
             double phaseOffset = 0;
 
 
-            List<SquareOscillator> synthList = new List<SquareOscillator>();
 
-            // creates a list of synth squarewaves for a duty cycle sweep
-            for (double duty = 0; duty <= 1.0; duty += 0.2) 
-            {
-                SquareOscillator Synth = new SquareOscillator(Note.A, 4, sr, phaseOffset,duty);
-                synthList.Add(Synth);
-            }
+            var A4 = new SineOscillator(440.0, sr, phaseOffset);
+            var CS5 = new SineOscillator(550.0, sr, phaseOffset);
+            var E5 = new SineOscillator(660.0, sr, phaseOffset);
 
+            var tremeloSinusoid = new SineOscillator(5.0, sr, phaseOffset);
+            var tremeloEnvelope = tremeloSinusoid * 0.5 + 0.5;
+
+            SampleNode chord = A4 * tremeloEnvelope;
             // generates data for 5 whole cycles
-            double duration = 5.0 / synthList[0].GetFrequency();
+            double duration = 20.0 / tremeloSinusoid.GetFrequency();
             int numberSamples = (int)(duration * sr);
 
             //generates a csv file with a single time column and a column for samples from each synth in the list.
             using var writer = new StreamWriter("data.csv");
-         
+
             // Write header
-            var header = "Time," + string.Join(",", synthList.Select((s, idx) => $"Synth{idx}"));
+            var header = "Time,sample";
             writer.WriteLine(header);
 
             // sample time 
@@ -46,8 +46,8 @@ namespace ElectricSheepSynth
             for (int i = 0; i < numberSamples; i++)
             {
                 double time = ts * i;
-                var values = synthList.Select(synth => synth.GetNextSample().ToString());
-                writer.WriteLine($"{time},{string.Join(",", values)}");
+                var value = chord.GetNextSample();
+                writer.WriteLine($"{time},{value}");
             }
 
             writer.Close();
