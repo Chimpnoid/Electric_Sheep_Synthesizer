@@ -88,7 +88,7 @@ namespace ElectricSheepSynth.Synth
                 case Note.C:
                     baseFreq = 261.63;
                     break;
-                case Note.Cs or Note.Bb:
+                case Note.Cs or Note.Db:
                     baseFreq = 277.18;
                     break;
                 case Note.D:
