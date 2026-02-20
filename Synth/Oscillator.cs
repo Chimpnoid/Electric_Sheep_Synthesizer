@@ -17,14 +17,14 @@ namespace ElectricSheepSynth.Synth
         private double phaseIncrement; // current phase increment, maps between 0 and 1, essentially how of the way through a cycle are we
         
 
-        public Oscillator(double sampleRate,double phaseOffset, Note note, int octave = 4)
+        public Oscillator(Note note,int octave,double sampleRate,double phaseOffset)
         {
             this.freq = Note2Freq(note,octave);
             this.sampleRate = sampleRate;
             incrementPhase(phaseOffset);
         }
 
-        public Oscillator(double sampleRate,double PhaseOffset, double frequency)
+        public Oscillator(double frequency, double sampleRate,double PhaseOffset)
         {
             this.freq = frequency;
             this.sampleRate = sampleRate;   
@@ -73,7 +73,7 @@ namespace ElectricSheepSynth.Synth
         }
 
         // convert the note from Enum to an actual frequency corresponding to the western music notes. 
-        private double Note2Freq(Note note,int octave) 
+        double Note2Freq(Note note,int octave) 
         {
             double baseFreq;
 

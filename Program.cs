@@ -16,38 +16,32 @@ namespace ElectricSheepSynth
         {
 
 
-            double sr = 44100;
+            double sr = 1000000;
             double phaseOffset = 0;
 
 
-            List<SineOscillator> synthList = new List<SineOscillator>();
+            List<SquareOscillator> synthList = new List<SquareOscillator>();
 
-            // creates a list of synth sinewaves for each chromatic note. .Cast<Note>.Distinct() filters flats and sharps.
-            foreach (Note note in Enum.GetValues(typeof(Note)).Cast<Note>().Distinct())
+            // creates a list of synth squarewaves for a duty cycle sweep
+            for (double duty = 0; duty <= 1.0; duty += 0.2) 
             {
-                SineOscillator Synth = new SineOscillator(sr,phaseOffset,note,4);
+                SquareOscillator Synth = new SquareOscillator(Note.A, 4, sr, phaseOffset,duty);
                 synthList.Add(Synth);
             }
 
-
-            // determine the lowest frequency using a LINQ query. so the buffer contains at least one cycle of
-            // each frequency. 
-            double lowestFreq = synthList.Min(s => s.GetFrequency());
-            double highestFreq = synthList.Max(s => s.GetFrequency());
-
-            double duration = 1.0 / lowestFreq;
+            // generates data for 5 whole cycles
+            double duration = 5.0 / synthList[0].GetFrequency();
             int numberSamples = (int)(duration * sr);
 
-            double ts = 1.0 / sr;
-
-
-
-            //generates a csv file with a single time column and a column for samples from each synth in the list. 
+            //generates a csv file with a single time column and a column for samples from each synth in the list.
             using var writer = new StreamWriter("data.csv");
-
+         
             // Write header
             var header = "Time," + string.Join(",", synthList.Select((s, idx) => $"Synth{idx}"));
             writer.WriteLine(header);
+
+            // sample time 
+            double ts = 1.0 / sr;
 
             for (int i = 0; i < numberSamples; i++)
             {
