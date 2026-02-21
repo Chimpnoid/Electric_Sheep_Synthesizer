@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ElectricSheepSynth.Synth
 {
-    // SampleNode is currently nothing but will implement mixing and modulation techniques (+ and * overloaded operators).
+    // base class to allow for overloading of operators. 
     internal abstract class SampleNode : IAudioSample
     {
         public  abstract double GetNextSample();

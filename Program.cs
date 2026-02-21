@@ -20,18 +20,19 @@ namespace ElectricSheepSynth
             double phaseOffset = 0;
 
 
+            // create objects for notes in an A major chord
+            var A4 = new SineOscillator(Note.A,4, sr, phaseOffset);
+            var CS5 = new SineOscillator(Note.Cs,5, sr, phaseOffset);
+            var E5 = new SineOscillator(Note.E, 5, sr, phaseOffset);
 
-            var A4 = new SineOscillator(440.0, sr, phaseOffset);
-            var CS5 = new SineOscillator(550.0, sr, phaseOffset);
-            var E5 = new SineOscillator(660.0, sr, phaseOffset);
-
+            // create LFO oscillator for tremelo
             var tremeloSinusoid = new SineOscillator(5.0, sr, phaseOffset);
             var tremeloEnvelope = tremeloSinusoid * 0.5 + 0.5;
 
-            var chord = (A4).LowPass(100.0,sr).HighPass(50.0,sr);
+            var chord = ((A4 + CS5 + E5)*tremeloEnvelope).ADSRLinearEnvelope(sr,0.33,0.33,0.4,0.5);
 
             // generates data for 5 whole cycles
-            double duration = 20.0 / tremeloSinusoid.GetFrequency();
+            double duration = 50.0 / tremeloSinusoid.GetFrequency();
             int numberSamples = (int)(duration * sr);
 
             //generates a csv file with a single time column and a column for samples from each synth in the list.

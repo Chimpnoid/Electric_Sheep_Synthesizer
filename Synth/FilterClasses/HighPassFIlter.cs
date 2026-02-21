@@ -6,19 +6,21 @@ using System.Threading.Tasks;
 
 namespace ElectricSheepSynth.Synth
 {
-    internal class HighPass:Filter
+    // implements a simple first order RC high pass filter.
+    // y[k] = a(y[k-1]+x[k]+x[k-1])
+    // this could probably be generalised to nth order but haven't thought about it yet.
+    internal class HighPassFIlter:Filter
     {
 
         private double alpha;
         private double prevInput;
         private double RC;
 
-        public HighPass(IAudioSample wave,double cutoff, double sr) : base(wave, cutoff, sr)
+        public HighPassFIlter(IAudioSample wave,double cutoff, double sr) : base(wave, cutoff, sr)
         {
             double sampleTime = 1 / this.sampleRate;
 
             this.RC = 1 / (2 * Math.PI * this.cutOffFreq);
-
             this.alpha = this.RC / (this.RC + sampleTime);
         }
 
