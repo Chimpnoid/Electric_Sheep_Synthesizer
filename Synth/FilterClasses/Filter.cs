@@ -8,11 +8,17 @@ namespace ElectricSheepSynth.Synth
 {
     internal abstract class Filter:IAudioSample
     {
-        private double cutOffFreq;
+        protected IAudioSample waveform;
+        protected double cutOffFreq;
+        protected double prevOutput;
+        protected double sampleRate;
 
-        public Filter(double cutOffFrequency)
+        public Filter(IAudioSample waveform,double cutOffFrequency,double sr)
         {
+            this.waveform = waveform;
             this.cutOffFreq = cutOffFrequency;
+            this.prevOutput = 0;
+            this.sampleRate = sr;
         }
 
 

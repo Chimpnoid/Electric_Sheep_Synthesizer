@@ -16,7 +16,7 @@ namespace ElectricSheepSynth
         {
 
 
-            double sr = 1000000;
+            double sr = 44100;
             double phaseOffset = 0;
 
 
@@ -28,7 +28,8 @@ namespace ElectricSheepSynth
             var tremeloSinusoid = new SineOscillator(5.0, sr, phaseOffset);
             var tremeloEnvelope = tremeloSinusoid * 0.5 + 0.5;
 
-            SampleNode chord = A4 * tremeloEnvelope;
+            var chord = (A4).LowPass(100.0,sr).HighPass(50.0,sr);
+
             // generates data for 5 whole cycles
             double duration = 20.0 / tremeloSinusoid.GetFrequency();
             int numberSamples = (int)(duration * sr);
