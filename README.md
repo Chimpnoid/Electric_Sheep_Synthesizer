@@ -4,20 +4,22 @@ the morning one day. It will be terrible but I am using it as a learning experie
 for C# and digital signal processing.
 
 #Current implementation:
-- Streaming a generated waveform to the speakers (This is a windows specific 
-  implementation I believe).
-  - Generates a .WAV stored in a memory stream to be streamed directly to the 
-    speaker rather than saving it to the harddrive first.
-  - Creates a .WAV header file based on the binary waveform data it receives.  
-- Sinusoidal Oscillator with programmable frequency,phase offset, and DC offset.
-- Two channel audio interleaving.
-- Summing and multiplication of waveforms.
+- The Current implementation has no way of streaming audio to the speaker as I haven't figured out how to do this
+  yet with the new method of generating samples. Currently I have been saving waveform data to a csv and plotting
+  in matlab to see what they do. 
+- Several oscillators have been added (Sine,Triangle (includes sawtooth) and Square (PWM)
+- Filter Classes have been added and simple filters implemented.
+- Extension class added to allow streams to be defined in a fluent manner akin to a signal chain. 
+- overloaded operators to allow for DC shifting, gain, mixing, modulating
 
-#To Do: 
-- Implement different types of oscillator (square wave, saw tooth, and triangle).
-- Move everything to classes.
-- ADSR filter.
-- Sample Loader.
+#To do:
+- Implement AudioPlayer class which will use com api implementation of WASAPI for streaming samples to speaker
+- Loading samples from stored files, I assume this will be a parser of some description that rips data and stores
+  in a buffer.
+- More complex filters
+- Envelope classes (ASDR etc)
+- Effects (reverb,chorus, delay etc); 
+- FFT Functions
+- Console Plotting function for waveforms and FFT data.
 - Sequencer.
-- UI.
-- Whatever pops into my head really. 
+- GUI
