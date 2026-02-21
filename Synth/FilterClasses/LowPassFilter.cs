@@ -6,13 +6,16 @@ using System.Threading.Tasks;
 
 namespace ElectricSheepSynth.Synth
 {
-    internal class LowPass:Filter
+    // simple first order low pass filter implementation. y[k] = ax[k] + (1-a)y[k-1]
+    // mimics simple first order RC filter
+    // could probably be generalised to nth order filter but not looked yet. 
+    internal class LowPassFilter:Filter
     {
 
         private double alpha;
         private double RC;
 
-        public LowPass(IAudioSample wave,double cutoff,double sr): base(wave, cutoff, sr)
+        public LowPassFilter(IAudioSample wave,double cutoff,double sr): base(wave, cutoff, sr)
         {
             double sampleTime = 1 / this.sampleRate;
 

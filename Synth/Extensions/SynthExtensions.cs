@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ElectricSheepSynth.Synth.EnvelopeClasses;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -9,15 +10,20 @@ namespace ElectricSheepSynth.Synth
 {
     internal static class SynthExtensions
     {
-
-        public static LowPass LowPass(this IAudioSample wave,double cutoff,double sr)
+        // extensions allow for fluent syntax of application of modifiers to audio objects. Akin to a signal chain. Key idea is using the this keyword.
+        public static LowPassFilter LowPassFilter(this IAudioSample wave,double cutoff,double sr)
         {
-            return new LowPass(wave,cutoff,sr);
+            return new LowPassFilter(wave,cutoff,sr);
         }
 
-        public static HighPass HighPass(this IAudioSample wave,double cutoff,double sr)
+        public static HighPassFIlter HighPassFilter(this IAudioSample wave,double cutoff,double sr)
         {
-            return new HighPass(wave,cutoff,sr);
+            return new HighPassFIlter(wave,cutoff,sr);
+        }
+
+        public static ADSRLinearEnvelope ADSRLinearEnvelope(this IAudioSample wave, double sr, double tAtt, double tDec, double lSus, double tRel)
+        {
+            return new ADSRLinearEnvelope(wave,sr,tAtt,tDec,lSus,tRel);
         }
     }
 }

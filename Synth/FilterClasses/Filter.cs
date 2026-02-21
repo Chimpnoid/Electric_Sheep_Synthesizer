@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace ElectricSheepSynth.Synth
 {
+    // base class for filters. Not sure if I needed this but it felt right as a lot of this stuff would be repeated.
     internal abstract class Filter:IAudioSample
     {
         protected IAudioSample waveform;
