@@ -29,5 +29,21 @@ namespace ElectricSheepSynth.Synth
             return this.op(this.a.GetNextSample(),this.b.GetNextSample());
         }
 
+
+        // override of keyon and keyoff. allows the output of operations to be keyed on and off. 
+        // currently only used by ADSR but maybe this will be extended by all other audio methods. 
+        // will act more like a on off for other methods. 
+        public override void KeyOn()
+        {
+            a.KeyOn();
+            b.KeyOn();
+        }
+
+        public override void KeyOff()
+        {
+            a.KeyOff();
+            b.KeyOff();
+        }
+
     }
 }

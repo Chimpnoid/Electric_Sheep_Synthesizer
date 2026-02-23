@@ -21,7 +21,7 @@ namespace ElectricSheepSynth.Synth
             double sampleTime = 1 / this.sampleRate;
 
             this.RC = 1 / (2 * Math.PI * this.cutOffFreq);
-            this.alpha = this.RC / (this.RC + sampleTime);
+            this.alpha = RC / (this.RC + sampleTime);
         }
 
 

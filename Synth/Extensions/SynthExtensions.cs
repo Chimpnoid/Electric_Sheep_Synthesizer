@@ -21,9 +21,9 @@ namespace ElectricSheepSynth.Synth
             return new HighPassFIlter(wave,cutoff,sr);
         }
 
-        public static ADSRLinearEnvelope ADSRLinearEnvelope(this IAudioSample wave, double sr, double tAtt, double tDec, double lSus, double tRel)
+        public static ADSRLinearEnvelope ADSRLinearEnvelope(this IAudioSample wave, double sr, double tAtt, double tDec, double tRel, double lSus)
         {
-            return new ADSRLinearEnvelope(wave,sr,tAtt,tDec,lSus,tRel);
+            return new ADSRLinearEnvelope(wave,sr,tAtt,tDec,tRel,lSus);
         }
     }
 }
