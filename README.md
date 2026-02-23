@@ -11,7 +11,7 @@ for C# and digital signal processing.
 - Filter Classes have been added and simple filters implemented.
 - Extension class added to allow streams to be defined in a fluent manner akin to a signal chain. 
 - overloaded operators to allow for DC shifting, gain, mixing, modulating.
-- basic ADSR envelope.
+- Linear ADSR using a statemachine.
 
 # To do:
 - Implement AudioPlayer class which will use com api implementation of WASAPI for streaming samples to speaker

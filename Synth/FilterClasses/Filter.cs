@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace ElectricSheepSynth.Synth
 {
     // base class for filters. Not sure if I needed this but it felt right as a lot of this stuff would be repeated.
-    internal abstract class Filter:IAudioSample
+    internal abstract class Filter:SampleNode
     {
         protected IAudioSample waveform;
         protected double cutOffFreq;
@@ -23,7 +23,7 @@ namespace ElectricSheepSynth.Synth
         }
 
 
-        public abstract double GetNextSample();
+        public abstract override double GetNextSample();
 
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ElectricSheepSynth.MiscClasses;
 
 namespace ElectricSheepSynth.Synth
 {
@@ -27,7 +28,7 @@ namespace ElectricSheepSynth.Synth
             return new OperatorNode(a, b, (x, y) => x * y); ;
         }
 
-        // operating with constants: ConstantNode(x) casts a double as an ConstantNode which derives from SampleNode.
+        // operating with constants: ConstantNode(x) creates a constant value source.
         public static SampleNode operator *(SampleNode a, double b)
         {
             return new OperatorNode(a, new ConstantNode(b), (x, y) => x * y);
@@ -46,5 +47,9 @@ namespace ElectricSheepSynth.Synth
         {
             return new OperatorNode(new ConstantNode(a), b, (x, y) => x + y);
         }
+
+        // empty overridable methods to allow derived classes to be keyable.
+        public virtual void KeyOn() { }  
+        public virtual void KeyOff() { }
     }
 }

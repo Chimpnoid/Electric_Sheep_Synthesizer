@@ -12,8 +12,22 @@ namespace ElectricSheepSynth
 {
     internal class Program
     {
+        private static volatile bool check = true;
         static void Main(string[] args)
         {
+            // Start keyboard listener on background thread
+            Task.Run(() =>
+            {
+                while (true)
+                {
+                    var key = Console.ReadKey(intercept: true);
+                    if (key.Key == ConsoleKey.Spacebar)
+                    {
+                        check = !check;
+                        Console.WriteLine(check ? "Key ON" : "Key OFF");
+                    }
+                }
+            });
 
 
             double sr = 44100;
@@ -24,32 +38,41 @@ namespace ElectricSheepSynth
             var A4 = new SineOscillator(Note.A,4, sr, phaseOffset);
             var CS5 = new SineOscillator(Note.Cs,5, sr, phaseOffset);
             var E5 = new SineOscillator(Note.E, 5, sr, phaseOffset);
-
-            // create LFO oscillator for tremelo
-            var tremeloSinusoid = new SineOscillator(5.0, sr, phaseOffset);
-            var tremeloEnvelope = tremeloSinusoid * 0.5 + 0.5;
-
-            var chord = ((A4 + CS5 + E5)*tremeloEnvelope).ADSRLinearEnvelope(sr,0.33,0.33,0.4,0.5);
+            var chord0 = (A4 + CS5).ADSRLinearEnvelope(sr,0.4,0.2,0.4,0.2) + E5.ADSRLinearEnvelope(sr,0.1,0.5,0.1,0.7);
+        
 
             // generates data for 5 whole cycles
-            double duration = 50.0 / tremeloSinusoid.GetFrequency();
+
+            double duration = 200000 / A4.GetFrequency();
             int numberSamples = (int)(duration * sr);
 
             //generates a csv file with a single time column and a column for samples from each synth in the list.
             using var writer = new StreamWriter("data.csv");
 
             // Write header
-            var header = "Time,sample";
+            var header = "Time,Sample";
             writer.WriteLine(header);
 
             // sample time 
             double ts = 1.0 / sr;
-
             for (int i = 0; i < numberSamples; i++)
             {
+
                 double time = ts * i;
-                var value = chord.GetNextSample();
-                writer.WriteLine($"{time},{value}");
+                writer.WriteLine($"{time},{chord0.GetNextSample()}");
+
+
+                if (check)
+                {
+                    chord0.KeyOn(); 
+                }
+                else
+                {
+                    chord0.KeyOff();
+                } 
+
+
+
             }
 
             writer.Close();
